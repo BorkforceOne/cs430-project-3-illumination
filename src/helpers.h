@@ -1,0 +1,10 @@
+//
+// Created by Brandon Garling on 9/21/2016.
+//
+
+#ifndef CS430_PROJECT_2_BASIC_RAYCASTER_HELPERS_H
+#define CS430_PROJECT_2_BASIC_RAYCASTER_HELPERS_H
+
+void skip_whitespace(FILE *fh);
+
+#endif //CS430_PROJECT_2_BASIC_RAYCASTER_HELPERS_H
