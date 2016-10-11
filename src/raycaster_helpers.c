@@ -35,12 +35,7 @@ int JSONArray_to_V3(JSONArray *JSONArrayRef, V3 *vectorRef) {
 			return 1;
 		}
 
-		if (i == 0)
-			vectorRef->X = JSONValueTempRef->data.dataNumber;
-		else if (i == 1)
-			vectorRef->Y = JSONValueTempRef->data.dataNumber;
-		else if (i == 2)
-			vectorRef->Z = JSONValueTempRef->data.dataNumber;
+		vectorRef->array[i] = JSONValueTempRef->data.dataNumber;
 	}
 
 	return 0;
@@ -49,10 +44,10 @@ int JSONArray_to_V3(JSONArray *JSONArrayRef, V3 *vectorRef) {
 /**
  * Populates a scene based on the input JSONRootValue
  * @param JSONValueSceneRef - The JSON value containing a JSONArray to be used to populate the scene
- * @param SceneRef - A reference to the scene to populate
+ * @param sceneRef - A reference to the scene to populate
  * @return 0 if success, otherwise a failure occurred
  */
-int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
+int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 	JSONObject *JSONObjectTempRef;
 	JSONValue *JSONValueTempRef;
 	JSONArray *JSONSceneArrayRef;
@@ -65,10 +60,11 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 	JSONSceneArrayRef = JSONValueSceneRef->data.dataArray;
 
 	int size = JSONSceneArrayRef->length - 1;
-	SceneRef->primitives = malloc(sizeof(Primitive*) * size);
-	SceneRef->primitivesLength = size;
+	sceneRef->primitives = malloc(sizeof(Primitive*) * size);
+	sceneRef->lights = malloc(sizeof(Light*) * size);
 
-	int j = 0;
+	int primitivesLength = 0;
+	int lightsLength = 0;
 	for (int i = 0; i < JSONSceneArrayRef->length; i++) {
 		// Look at the objects we loaded in JSON
 		if (JSONSceneArrayRef->values[i]->type == OBJECT_T) {
@@ -101,7 +97,7 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 					fprintf(stderr, "Error: Negative camera height is not allowed\n");
 					return 1;
 				}
-				SceneRef->camera.height = JSONValueTempRef->data.dataNumber;
+				sceneRef->camera.height = JSONValueTempRef->data.dataNumber;
 
 				// Read the width
 
@@ -118,15 +114,15 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 					return 1;
 				}
 
-				SceneRef->camera.width = JSONValueTempRef->data.dataNumber;
+				sceneRef->camera.width = JSONValueTempRef->data.dataNumber;
 			}
 			else if (strcmp(JSONValueTempRef->data.dataString, "sphere") == 0) {
 				// We found a sphere
-				SceneRef->primitives[j] = malloc(sizeof(Primitive));
-				SceneRef->primitives[j]->type = SPHERE_T;
+				sceneRef->primitives[primitivesLength] = malloc(sizeof(Primitive));
+				sceneRef->primitives[primitivesLength]->type = SPHERE_T;
 
-				// Read the color
-				if (JSONObject_get_value("color", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+				// Read the diffuse color
+				if (JSONObject_get_value("diffuse_color", JSONObjectTempRef, &JSONValueTempRef) != 0) {
 					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 					return 1;
 				}
@@ -135,7 +131,21 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 					return 1;
 				}
 
-				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &SceneRef->primitives[j]->data.sphere.color) != 0) {
+				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.sphere.diffuseColor) != 0) {
+					return 1;
+				}
+
+				// Read the specular color
+				if (JSONObject_get_value("specular_color", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+				if (JSONValueTempRef->type != ARRAY_T) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+
+				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.sphere.specularColor) != 0) {
 					return 1;
 				}
 
@@ -149,7 +159,7 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 					return 1;
 				}
 
-				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &SceneRef->primitives[j]->data.sphere.position) != 0) {
+				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.sphere.position) != 0) {
 					return 1;
 				}
 
@@ -167,16 +177,16 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 					return 1;
 				}
 
-				SceneRef->primitives[j]->data.sphere.radius = JSONValueTempRef->data.dataNumber;
-				j++;
+				sceneRef->primitives[primitivesLength]->data.sphere.radius = JSONValueTempRef->data.dataNumber;
+				primitivesLength++;
 			}
 			else if (strcmp(JSONValueTempRef->data.dataString, "plane") == 0) {
 				// We found a plane
-				SceneRef->primitives[j] = malloc(sizeof(Primitive));
-				SceneRef->primitives[j]->type = PLANE_T;
+				sceneRef->primitives[primitivesLength] = malloc(sizeof(Primitive));
+				sceneRef->primitives[primitivesLength]->type = PLANE_T;
 
-				// Read the color
-				if (JSONObject_get_value("color", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+				// Read the diffuse color
+				if (JSONObject_get_value("diffuse_color", JSONObjectTempRef, &JSONValueTempRef) != 0) {
 					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 					return 1;
 				}
@@ -185,34 +195,21 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 					return 1;
 				}
 
-				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &SceneRef->primitives[j]->data.plane.color) != 0) {
+				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.plane.diffuseColor) != 0) {
 					return 1;
 				}
 
-				// Make sure that we have no negative colors and all colors are between 0 and 1
-				if (SceneRef->primitives[j]->data.plane.color.X < 0) {
-					fprintf(stderr, "Error: Colors cannot be negative\n");
+				// Read the specular color
+				if (JSONObject_get_value("specular_color", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 					return 1;
 				}
-				if (SceneRef->primitives[j]->data.plane.color.Y < 0) {
-					fprintf(stderr, "Error: Colors cannot be negative\n");
-					return 1;
-				}
-				if (SceneRef->primitives[j]->data.plane.color.Z < 0) {
-					fprintf(stderr, "Error: Colors cannot be negative\n");
+				if (JSONValueTempRef->type != ARRAY_T) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 					return 1;
 				}
 
-				if (SceneRef->primitives[j]->data.plane.color.X > 1) {
-					fprintf(stderr, "Error: Colors cannot be greater than 1\n");
-					return 1;
-				}
-				if (SceneRef->primitives[j]->data.plane.color.Y > 1) {
-					fprintf(stderr, "Error: Colors cannot be greater than 1\n");
-					return 1;
-				}
-				if (SceneRef->primitives[j]->data.plane.color.Z > 1) {
-					fprintf(stderr, "Error: Colors cannot be greater than 1\n");
+				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.plane.specularColor) != 0) {
 					return 1;
 				}
 
@@ -226,7 +223,7 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 					return 1;
 				}
 
-				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &SceneRef->primitives[j]->data.plane.position) != 0) {
+				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.plane.position) != 0) {
 					return 1;
 				}
 
@@ -240,11 +237,82 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 					return 1;
 				}
 
-				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &SceneRef->primitives[j]->data.plane.normal) != 0) {
+				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.plane.normal) != 0) {
 					return 1;
 				}
 
-				j++;
+				primitivesLength++;
+			}
+			else if (strcmp(JSONValueTempRef->data.dataString, "light") == 0) {
+				// We found a point light
+				sceneRef->lights[lightsLength] = malloc(sizeof(Light));
+				sceneRef->lights[lightsLength]->type = POINTLIGHT_T;
+
+				// Read the color
+				if (JSONObject_get_value("color", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+				if (JSONValueTempRef->type != ARRAY_T) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+
+				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->lights[lightsLength]->data.pointLight.color) != 0) {
+					return 1;
+				}
+
+				// Read the position
+				if (JSONObject_get_value("position", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+				if (JSONValueTempRef->type != ARRAY_T) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+
+				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->lights[lightsLength]->data.pointLight.position) != 0) {
+					return 1;
+				}
+
+				// Read the radialA2
+				if (JSONObject_get_value("radial-a2", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+				if (JSONValueTempRef->type != NUMBER_T) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+
+				sceneRef->lights[lightsLength]->data.pointLight.radialA2 = JSONValueTempRef->data.dataNumber;
+
+				// Read the radialA1
+				if (JSONObject_get_value("radial-a1", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+				if (JSONValueTempRef->type != NUMBER_T) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+
+				sceneRef->lights[lightsLength]->data.pointLight.radialA1 = JSONValueTempRef->data.dataNumber;
+
+				// Read the radialA0
+				if (JSONObject_get_value("radial-a0", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+				if (JSONValueTempRef->type != NUMBER_T) {
+					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+					return 1;
+				}
+
+				sceneRef->lights[lightsLength]->data.pointLight.radialA0 = JSONValueTempRef->data.dataNumber;
+
+				lightsLength++;
 			}
 			else {
 				fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
@@ -255,6 +323,9 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef) {
 			fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 			return 1;
 		}
+
+		sceneRef->primitivesLength = primitivesLength;
+		sceneRef->lightsLength = lightsLength;
 	}
 
 	return 0;
