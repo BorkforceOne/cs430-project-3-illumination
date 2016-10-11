@@ -7,9 +7,8 @@
 
 typedef struct Scene Scene;
 typedef struct JSONArray JSONArray;
-typedef struct V3 V3;
 
 int JSONArray_to_V3(JSONArray *JSONArrayRef, V3 *vectorRef);
-int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* SceneRef);
+int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef);
 
 #endif //CS430_PROJECT_2_BASIC_RAYCASTER_RAYCASTER_HELPERS_H

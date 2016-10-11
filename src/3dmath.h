@@ -10,10 +10,11 @@
 /**
  * A three dimensional vector struct
  */
-typedef struct V3 {
-	double X;
-	double Y;
-	double Z;
+typedef union V3 {
+	struct {
+		double X, Y, Z;
+	} data;
+	double array[3];
 } V3;
 
 /**
@@ -23,9 +24,9 @@ typedef struct V3 {
  * @param result - The result of the addition is stored in this vector
  */
 static inline void v3_add(V3 *a,V3 *b, V3 *result) {
-	result->X = a->X + b->X;
-	result->Y = a->Y + b->Y;
-	result->Z = a->Z + b->Z;
+	result->data.X = a->data.X + b->data.X;
+	result->data.Y = a->data.Y + b->data.Y;
+	result->data.Z = a->data.Z + b->data.Z;
 }
 
 /**
@@ -35,9 +36,9 @@ static inline void v3_add(V3 *a,V3 *b, V3 *result) {
  * @param subtractResult - The result of the subtraction is stored in this vector
  */
 static inline void v3_subtract(V3 *a,V3 *b, V3 *result) {
-	result->X = a->X - b->X;
-	result->Y = a->Y - b->Y;
-	result->Z = a->Z - b->Z;
+	result->data.X = a->data.X - b->data.X;
+	result->data.Y = a->data.Y - b->data.Y;
+	result->data.Z = a->data.Z - b->data.Z;
 }
 
 /**
@@ -47,9 +48,9 @@ static inline void v3_subtract(V3 *a,V3 *b, V3 *result) {
  * @param scaleResult - The result of the subtraction is stored in this vector
  */
 static inline void v3_scale(V3 *a, double s, V3 *result) {
-	result->X = a->X * s;
-	result->Y = a->Y * s;
-	result->Z = a->Z * s;
+	result->data.X = a->data.X * s;
+	result->data.Y = a->data.Y * s;
+	result->data.Z = a->data.Z * s;
 }
 
 /**
@@ -59,7 +60,7 @@ static inline void v3_scale(V3 *a, double s, V3 *result) {
  * @param result - The result of the dot operation is stored in this vector
  */
 static inline void v3_dot(V3 *a, V3 *b, double *result) {
-	*result = a->X * b->X + a->Y * b->Y + a->Z * b->Z;
+	*result = a->data.X * b->data.X + a->data.Y * b->data.Y + a->data.Z * b->data.Z;
 }
 
 /**
@@ -69,9 +70,9 @@ static inline void v3_dot(V3 *a, V3 *b, double *result) {
  * @param result - The result of the cross operation is stored in this vector
  */
 static inline void v3_cross(V3 *a, V3 *b, V3 *result) {
-	result->X = a->Y * b->Z - a->Z * b->Y;
-	result->Y = a->Z * b->X - a->X * b->Z;
-	result->Z = a->X * b->Y - a->Y * b->X;
+	result->data.X = a->data.Y * b->data.Z - a->data.Z * b->data.Y;
+	result->data.Y = a->data.Z * b->data.X - a->data.X * b->data.Z;
+	result->data.Z = a->data.X * b->data.Y - a->data.Y * b->data.X;
 }
 
 /**
@@ -80,7 +81,7 @@ static inline void v3_cross(V3 *a, V3 *b, V3 *result) {
  * @param result - The result of the magnitude calculation
  */
 static inline void v3_magnitude(V3 *a, double *result) {
-	*result = sqrt(a->X*a->X + a->Y*a->Y + a->Z*a->Z);
+	*result = sqrt(a->data.X*a->data.X + a->data.Y*a->data.Y + a->data.Z*a->data.Z);
 }
 
 /**
@@ -100,9 +101,15 @@ static inline void v3_normalize(V3 *a, V3 *b) {
  * @param dst - The destination vector to copy to
  */
 static inline void v3_copy(V3 *src, V3 *dst) {
-	dst->X = src->X;
-	dst->Y = src->Y;
-	dst->Z = src->Z;
+	dst->data.X = src->data.X;
+	dst->data.Y = src->data.Y;
+	dst->data.Z = src->data.Z;
+}
+
+static inline void v3_distance(V3 *a, V3 *b, double *result) {
+	*result = pow(b->data.X - a->data.X, 2) +
+			  pow(b->data.Y - a->data.Y, 2) +
+			  pow(b->data.Z - a->data.Z, 2);
 }
 
 #endif //CS430_PROJECT_2_BASIC_RAYCASTER_3DMATH_H
