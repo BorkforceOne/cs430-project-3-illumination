@@ -15,6 +15,18 @@ typedef struct RGBApixel {
 } RGBApixel;
 
 /**
+ * RGBAColor - Can be used to address RGBA colors
+ */
+typedef struct RGBAColor {
+	union {
+		struct {
+			uint8_t R, G, B, A;
+		} data;
+		uint8_t array[4];
+	};
+} RGBAColor;
+
+/**
  * Image - An image containing a width, height, and pixmap
  */
 typedef struct Image {
