@@ -41,10 +41,10 @@
   },
   {
     "type": "light",
-    "color": [10.0, 10.0, 10.0],
+    "color": [60000.0, 60000.0, 60000.0],
     "position": [0, 0, 0],
     "radial-a2": 1,
-    "radial-a1": 1,
-    "radial-a0": 1
+    "radial-a1": 0,
+    "radial-a0": 0
   }
 ]

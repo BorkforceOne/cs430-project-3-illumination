@@ -106,6 +106,13 @@ static inline void v3_copy(V3 *src, V3 *dst) {
 	dst->data.Z = src->data.Z;
 }
 
+static inline void v3_reflect(V3 *a, V3* n, V3* result) {
+	double s;
+	v3_dot(a, n, &s);
+	v3_scale(n, -2 * s, result);
+	v3_add(result, a, result);
+}
+
 static inline void v3_distance(V3 *a, V3 *b, double *result) {
 	*result = pow(b->data.X - a->data.X, 2) +
 			  pow(b->data.Y - a->data.Y, 2) +

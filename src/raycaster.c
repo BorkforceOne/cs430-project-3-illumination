@@ -78,13 +78,13 @@ int shade(RGBAColor* colorRef, RGBApixel *pixel) {
 int shoot(V3 *rayOriginRef, V3 *rayDirectionRef, Scene *sceneRef, RGBAColor *foundColor) {
 	Primitive *primitiveRef;
 	Primitive *primitiveHitRef = NULL;
-	int i = 0;
+	set_color(foundColor, 0, 0, 0, 1);
 	// Our current closest t value
-	double t = INFINITY;
+	double primitive_t = INFINITY;
 	// A possible t value replacement
 	double t_possible;
 
-	for (i = 0; i < sceneRef->primitivesLength; i++) {
+	for (int i = 0; i < sceneRef->primitivesLength; i++) {
 		t_possible = INFINITY;
 		primitiveRef = sceneRef->primitives[i];
 
@@ -92,44 +92,155 @@ int shoot(V3 *rayOriginRef, V3 *rayDirectionRef, Scene *sceneRef, RGBAColor *fou
 			t_possible = intersect_plane(&primitiveRef->data.plane, rayOriginRef, rayDirectionRef);
 		else if (primitiveRef->type == SPHERE_T)
 			t_possible = intersect_sphere(&primitiveRef->data.sphere, rayOriginRef, rayDirectionRef);
-		if (t_possible > 0 && t_possible < t) {
-			t = t_possible;
+		if (t_possible > 0 && t_possible < primitive_t) {
+			primitive_t = t_possible;
 			primitiveHitRef = primitiveRef;
 		}
 	}
 
 	if (primitiveHitRef != NULL) {
 		// Calculate our new rayOrigin
+		V3 color = {0, 0, 0};
+		// Set the ambient color
+		//set_color(&color, 50, 50, 50, 255);
+
 		V3 newRayOrigin;
-		v3_scale(rayDirectionRef, t, &newRayOrigin);
+		V3 newRayDirection;
+		v3_scale(rayDirectionRef, primitive_t, &newRayOrigin);
 		v3_add(rayOriginRef, &newRayOrigin, &newRayOrigin);
-		// Figure out lighting
-		Light *lightRef;
-		int totalLights = 0;
-		foundColor->data.R = 0;
-		foundColor->data.G = 0;
-		foundColor->data.B = 0;
-		foundColor->data.A = 1;
-		V3 lightInfluence;
-		V3 lightDiffuse;
-		for (i = 0; i < sceneRef->lightsLength; i++) {
-			lightRef = sceneRef->lights[i];
-			if (lightRef->type == POINTLIGHT_T) {
-				t_possible = intersect_point_light(&lightRef->data.pointLight, &newRayOrigin);
-				v3_copy(&lightRef->data.pointLight.color, &lightInfluence);
-				v3_scale(&lightInfluence, 1/(lightRef->data.pointLight.radialA2*pow(t_possible, 2) + lightRef->data.pointLight.radialA1)*t_possible + lightRef->data.pointLight.radialA0, &lightInfluence);
-				v3_add(&lightDiffuse, &lightInfluence, &lightDiffuse);
-				totalLights++;
+		// Shadow test
+		for (int i = 0; i < sceneRef->lightsLength; i++) {
+			v3_subtract(&sceneRef->lights[i]->data.pointLight.position, &newRayOrigin, &newRayDirection);
+			v3_normalize(&newRayDirection, &newRayDirection);
+			double light_t = INFINITY;
+			for (int j = 0; j < sceneRef->primitivesLength; j++) {
+				t_possible = INFINITY;
+				primitiveRef = sceneRef->primitives[j];
+				// Skip the current object
+				if (primitiveRef == primitiveHitRef)
+					continue;
+
+				if (primitiveRef->type == PLANE_T)
+					t_possible = intersect_plane(&primitiveRef->data.plane, &newRayOrigin, &newRayDirection);
+				else if (primitiveRef->type == SPHERE_T)
+					t_possible = intersect_sphere(&primitiveRef->data.sphere, &newRayOrigin, &newRayDirection);
+				if (t_possible > 0 && t_possible < light_t)
+					light_t = t_possible;
 			}
+
+			if (light_t != INFINITY)
+				// Our light is in shadow
+				continue;
+
+			if (primitive_t > light_t)
+				continue;
+
+			// N, L, R, V
+
+			// Normal
+			V3 N;
+			// Light_position - newRayOrigin;
+			V3 L;
+			v3_subtract(&sceneRef->lights[i]->data.pointLight.position, &newRayOrigin, &L);
+			v3_normalize(&L, &L);
+			// Reflection of L
+			V3 R;
+			// RayDirection
+			V3 V;
+			v3_distance(&sceneRef->lights[i]->data.pointLight.position, &newRayOrigin, &light_t);
+			v3_copy(rayDirectionRef, &V);
+			v3_normalize(&V, &V);
+
+			switch(primitiveHitRef->type) {
+				case PLANE_T:
+					v3_copy(&primitiveHitRef->data.plane.normal, &N);
+					break;
+
+				case SPHERE_T:
+					v3_subtract(&newRayOrigin, &primitiveHitRef->data.sphere.position, &N);
+					v3_normalize(&N, &N);
+					break;
+			}
+			v3_reflect(&L, &N, &R);
+			V3 lightContribution;
+			V3 diffuse;
+			V3 specular;
+			double frad;
+			double fang;
+			calculate_diffuse(&N, &L, sceneRef->lights[i], &diffuse);
+			// multiply diffuse by each part of the input
+			diffuse.array[0] *= primitiveHitRef->data.plane.diffuseColor.array[0];
+			diffuse.array[1] *= primitiveHitRef->data.plane.diffuseColor.array[1];
+			diffuse.array[2] *= primitiveHitRef->data.plane.diffuseColor.array[2];
+			//calculate_specular(&specular);
+			calculate_frad(sceneRef->lights[i], light_t, &frad);
+			calculate_fang(&fang);
+			//v3_add(&diffuse, &specular, &lightContribution);
+			v3_copy(&diffuse, &lightContribution);
+			v3_scale(&lightContribution, frad * fang, &lightContribution);
+			color.array[0] += lightContribution.array[0];
+			color.array[1] += lightContribution.array[1];
+			color.array[2] += lightContribution.array[2];
 		}
-		v3_add(&primitiveHitRef->data.plane.diffuseColor, &lightDiffuse, &lightDiffuse);
-		v3_scale(&lightDiffuse, 1/totalLights, &lightDiffuse);
-		foundColor->data.R = lightDiffuse.data.X*255;
-		foundColor->data.G = lightDiffuse.data.Y*255;
-		foundColor->data.B = lightDiffuse.data.Z*255;
+
+		// Figure out lighting
+		foundColor->data.R = (uint8_t) (clamp(color.array[0])*255);
+		foundColor->data.G = (uint8_t) (clamp(color.array[1])*255);
+		foundColor->data.B = (uint8_t) (clamp(color.array[2])*255);
+		foundColor->data.A = 1;
+
+		//foundColor->data.R = (uint8_t) (clamp(primitiveHitRef->data.plane.diffuseColor.array[0])*255);
+		//foundColor->data.G = (uint8_t) (clamp(primitiveHitRef->data.plane.diffuseColor.array[1])*255);
+		//foundColor->data.B = (uint8_t) (clamp(primitiveHitRef->data.plane.diffuseColor.array[2])*255);
+		//foundColor->data.A = 1;
+
 	}
 
 	return 0;
+}
+
+double clamp(double a) {
+	if (a < 0)
+		return 0;
+	if (a > 1)
+		return 1;
+	return a;
+}
+
+void calculate_frad(Light *light, double distance, double *result) {
+	*result = 1/(light->data.pointLight.radialA2*pow(distance, 2) +
+			  light->data.pointLight.radialA1*distance +
+			  light->data.pointLight.radialA0);
+}
+
+void calculate_fang(double *result) {
+	*result = 1;
+}
+
+void calculate_diffuse(V3 *N, V3 *L, Light* light, V3* result) {
+	double s;
+	v3_dot(N, L, &s);
+	if (s > 0)
+		v3_scale(&light->data.pointLight.color, s, result);
+	else {
+		result->array[0] = 0;
+		result->array[1] = 0;
+		result->array[2] = 0;
+	}
+}
+
+void set_color(RGBAColor* color, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+	color->data.R = r;
+	color->data.G = g;
+	color->data.B = b;
+	color->data.A = a;
+}
+
+void copy_color(RGBAColor* srcColor, RGBAColor* dstColor) {
+	dstColor->data.R = srcColor->data.R;
+	dstColor->data.G = srcColor->data.G;
+	dstColor->data.B = srcColor->data.B;
+	dstColor->data.A = srcColor->data.A;
 }
 
 double intersect_point_light(PointLight *pointLightRef, V3 *rayOriginRef) {
