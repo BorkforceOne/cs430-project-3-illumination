@@ -114,9 +114,9 @@ static inline void v3_reflect(V3 *a, V3* n, V3* result) {
 }
 
 static inline void v3_distance(V3 *a, V3 *b, double *result) {
-	*result = pow(b->data.X - a->data.X, 2) +
+	*result = sqrt(pow(b->data.X - a->data.X, 2) +
 			  pow(b->data.Y - a->data.Y, 2) +
-			  pow(b->data.Z - a->data.Z, 2);
+			  pow(b->data.Z - a->data.Z, 2));
 }
 
 #endif //CS430_PROJECT_2_BASIC_RAYCASTER_3DMATH_H
