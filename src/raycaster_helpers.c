@@ -312,6 +312,32 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 
 				sceneRef->lights[lightsLength]->data.pointLight.radialA0 = JSONValueTempRef->data.dataNumber;
 
+				// Read the angularA0 if it exists
+				if (JSONObject_get_value("angular-a0", JSONObjectTempRef, &JSONValueTempRef) == 0) {
+					sceneRef->lights[lightsLength]->type = SPOTLIGHT_T;
+
+					if (JSONValueTempRef->type != NUMBER_T) {
+						fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+						return 1;
+					}
+
+					sceneRef->lights[lightsLength]->data.spotLight.angularA0 = JSONValueTempRef->data.dataNumber;
+
+					// Read the direction
+					if (JSONObject_get_value("direction", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+						fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+						return 1;
+					}
+					if (JSONValueTempRef->type != ARRAY_T) {
+						fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+						return 1;
+					}
+
+					if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->lights[lightsLength]->data.spotLight.direction) != 0) {
+						return 1;
+					}
+				}
+
 				lightsLength++;
 			}
 			else {

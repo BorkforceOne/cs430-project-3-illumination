@@ -20,7 +20,8 @@ typedef enum PrimitiveType_t {
  * Supported Light Types
  */
 typedef enum LightType_t {
-	POINTLIGHT_T
+	POINTLIGHT_T,
+	SPOTLIGHT_T
 } LightType_t;
 
 /**
@@ -75,12 +76,27 @@ typedef struct PointLight {
 } PointLight;
 
 /**
+ * Spot Light
+ */
+
+typedef struct SpotLight {
+	V3 color;
+	V3 position;
+	float radialA2;
+	float radialA1;
+	float radialA0;
+	float angularA0;
+	V3 direction;
+} SpotLight;
+
+/**
  * Light Struct
  */
 typedef struct Light {
 	LightType_t type;
 	union {
 		PointLight pointLight;
+		SpotLight spotLight;
 	} data;
 } Light;
 
