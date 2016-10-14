@@ -82,27 +82,32 @@ int shoot(V3 *rayOriginRef, V3 *rayDirectionRef, Scene *sceneRef, RGBAColor *fou
 	// Our current closest t value
 	double primitive_t = INFINITY;
 	// A possible t value replacement
-	double t_possible;
+	double possible_t;
 
 	for (int i = 0; i < sceneRef->primitivesLength; i++) {
-		t_possible = INFINITY;
+		possible_t = INFINITY;
 		primitiveRef = sceneRef->primitives[i];
 
-		if (primitiveRef->type == PLANE_T)
-			t_possible = intersect_plane(&primitiveRef->data.plane, rayOriginRef, rayDirectionRef);
-		else if (primitiveRef->type == SPHERE_T)
-			t_possible = intersect_sphere(&primitiveRef->data.sphere, rayOriginRef, rayDirectionRef);
-		if (t_possible > 0 && t_possible < primitive_t) {
-			primitive_t = t_possible;
+		switch(primitiveRef->type) {
+			case PLANE_T:
+				possible_t = intersect_plane(&primitiveRef->data.plane, rayOriginRef, rayDirectionRef);
+				break;
+			case SPHERE_T:
+				possible_t = intersect_sphere(&primitiveRef->data.sphere, rayOriginRef, rayDirectionRef);
+				break;
+		}
+		// Set the new possible shadow
+		if (possible_t > 0 && possible_t < primitive_t) {
+			primitive_t = possible_t;
 			primitiveHitRef = primitiveRef;
 		}
 	}
 
 	if (primitiveHitRef != NULL) {
 		// Calculate our new rayOrigin
-		V3 color = {0, 0, 0};
-		// Set the ambient color
-		//set_color(&color, 50, 50, 50, 255);
+		V3 color = {0.1, 0.1, 0.1};
+		// Light intensity
+		V3 I;
 
 		V3 newRayOrigin;
 		V3 newRayDirection;
@@ -110,73 +115,101 @@ int shoot(V3 *rayOriginRef, V3 *rayDirectionRef, Scene *sceneRef, RGBAColor *fou
 		v3_add(rayOriginRef, &newRayOrigin, &newRayOrigin);
 		// Shadow test
 		for (int i = 0; i < sceneRef->lightsLength; i++) {
-			v3_subtract(&sceneRef->lights[i]->data.pointLight.position, &newRayOrigin, &newRayDirection);
-			v3_normalize(&newRayDirection, &newRayDirection);
+			Light *lightRef;
+			lightRef = sceneRef->lights[i];
 			double light_t = INFINITY;
+			double light_distance = INFINITY;
+
+			// Figure out newRayDirection
+			switch (lightRef->type) {
+				case POINTLIGHT_T:
+					v3_subtract(&lightRef->data.pointLight.position, &newRayOrigin, &newRayDirection);
+					v3_normalize(&newRayDirection, &newRayDirection);
+					v3_distance(&lightRef->data.pointLight.position, &newRayOrigin, &light_distance);
+					v3_copy(&lightRef->data.pointLight.color, &I);
+					break;
+				case SPOTLIGHT_T:
+					v3_subtract(&lightRef->data.pointLight.position, &newRayOrigin, &newRayDirection);
+					v3_normalize(&newRayDirection, &newRayDirection);
+					v3_distance(&lightRef->data.pointLight.position, &newRayOrigin, &light_distance);
+					v3_copy(&lightRef->data.pointLight.color, &I);
+					break;
+			}
+
+			// See if this should be in shadow
 			for (int j = 0; j < sceneRef->primitivesLength; j++) {
-				t_possible = INFINITY;
+				possible_t = INFINITY;
 				primitiveRef = sceneRef->primitives[j];
+
 				// Skip the current object
 				if (primitiveRef == primitiveHitRef)
 					continue;
 
-				if (primitiveRef->type == PLANE_T)
-					t_possible = intersect_plane(&primitiveRef->data.plane, &newRayOrigin, &newRayDirection);
-				else if (primitiveRef->type == SPHERE_T)
-					t_possible = intersect_sphere(&primitiveRef->data.sphere, &newRayOrigin, &newRayDirection);
-				if (t_possible > 0 && t_possible < light_t)
-					light_t = t_possible;
+				switch(primitiveRef->type) {
+					case PLANE_T:
+						possible_t = intersect_plane(&primitiveRef->data.plane, &newRayOrigin, &newRayDirection);
+						break;
+					case SPHERE_T:
+						possible_t = intersect_sphere(&primitiveRef->data.sphere, &newRayOrigin, &newRayDirection);
+						break;
+				}
+				// Set the new possible shadow
+				if (possible_t > 0 && possible_t < light_distance) {
+					light_t = possible_t;
+					break;
+				}
 			}
 
 			if (light_t != INFINITY)
 				// Our light is in shadow
 				continue;
 
-			if (primitive_t > light_t)
-				continue;
-
-			// N, L, R, V
-
-			// Normal
-			V3 N;
 			// Light_position - newRayOrigin;
 			V3 L;
-			v3_subtract(&sceneRef->lights[i]->data.pointLight.position, &newRayOrigin, &L);
-			v3_normalize(&L, &L);
 			// Reflection of L
 			V3 R;
 			// RayDirection
 			V3 V;
-			v3_distance(&sceneRef->lights[i]->data.pointLight.position, &newRayOrigin, &light_t);
+			// Normal
+			V3 N;
+			// Primitive diffuse color
+			V3 KD;
+			// Primitive specular color
+			V3 KS;
+
+			v3_subtract(&sceneRef->lights[i]->data.pointLight.position, &newRayOrigin, &L);
+			v3_normalize(&L, &L);
+
 			v3_copy(rayDirectionRef, &V);
 			v3_normalize(&V, &V);
 
 			switch(primitiveHitRef->type) {
 				case PLANE_T:
 					v3_copy(&primitiveHitRef->data.plane.normal, &N);
+					v3_copy(&primitiveHitRef->data.plane.diffuseColor, &KD);
+					v3_copy(&primitiveHitRef->data.plane.specularColor, &KS);
 					break;
 
 				case SPHERE_T:
 					v3_subtract(&newRayOrigin, &primitiveHitRef->data.sphere.position, &N);
 					v3_normalize(&N, &N);
+
+					v3_copy(&primitiveHitRef->data.sphere.diffuseColor, &KD);
+					v3_copy(&primitiveHitRef->data.sphere.specularColor, &KS);
 					break;
 			}
+
 			v3_reflect(&L, &N, &R);
-			V3 lightContribution;
+			V3 lightContribution = {0, 0, 0};
 			V3 diffuse;
 			V3 specular;
 			double frad;
 			double fang;
-			calculate_diffuse(&N, &L, sceneRef->lights[i], &diffuse);
-			// multiply diffuse by each part of the input
-			diffuse.array[0] *= primitiveHitRef->data.plane.diffuseColor.array[0];
-			diffuse.array[1] *= primitiveHitRef->data.plane.diffuseColor.array[1];
-			diffuse.array[2] *= primitiveHitRef->data.plane.diffuseColor.array[2];
-			//calculate_specular(&specular);
-			calculate_frad(sceneRef->lights[i], light_t, &frad);
-			calculate_fang(&fang);
-			//v3_add(&diffuse, &specular, &lightContribution);
-			v3_copy(&diffuse, &lightContribution);
+			calculate_diffuse(&N, &L, &KD, &I, &diffuse);
+			calculate_specular(&V, &R, &KS, &I, &N, &L, &specular);
+			calculate_frad(lightRef, light_distance, &frad);
+			calculate_fang(lightRef, &newRayDirection, &fang);
+			v3_add(&diffuse, &specular, &lightContribution);
 			v3_scale(&lightContribution, frad * fang, &lightContribution);
 			color.array[0] += lightContribution.array[0];
 			color.array[1] += lightContribution.array[1];
@@ -188,12 +221,6 @@ int shoot(V3 *rayOriginRef, V3 *rayDirectionRef, Scene *sceneRef, RGBAColor *fou
 		foundColor->data.G = (uint8_t) (clamp(color.array[1])*255);
 		foundColor->data.B = (uint8_t) (clamp(color.array[2])*255);
 		foundColor->data.A = 1;
-
-		//foundColor->data.R = (uint8_t) (clamp(primitiveHitRef->data.plane.diffuseColor.array[0])*255);
-		//foundColor->data.G = (uint8_t) (clamp(primitiveHitRef->data.plane.diffuseColor.array[1])*255);
-		//foundColor->data.B = (uint8_t) (clamp(primitiveHitRef->data.plane.diffuseColor.array[2])*255);
-		//foundColor->data.A = 1;
-
 	}
 
 	return 0;
@@ -213,15 +240,56 @@ void calculate_frad(Light *light, double distance, double *result) {
 			  light->data.pointLight.radialA0);
 }
 
-void calculate_fang(double *result) {
-	*result = 1;
+void calculate_fang(Light *light, V3 *V0, double *result) {
+	if (light->type != SPOTLIGHT_T) {
+		*result = 1;
+		return;
+	}
+	V3 VLight, VDirection;
+	v3_copy(V0, &VLight);
+
+	VLight.array[0] *= -1;
+	VLight.array[1] *= -1;
+	VLight.array[2] *= -1;
+
+	v3_normalize(&light->data.spotLight.direction, &VDirection);
+
+	double s;
+	v3_dot(&VDirection, &VLight, &s);
+	if (acos(s) > M_PI/16)
+		*result = 0;
+	else {
+		*result = pow(s, light->data.spotLight.angularA0);
+	}
 }
 
-void calculate_diffuse(V3 *N, V3 *L, Light* light, V3* result) {
+void calculate_diffuse(V3 *N, V3 *L, V3 *K, V3* I, V3* result) {
 	double s;
 	v3_dot(N, L, &s);
-	if (s > 0)
-		v3_scale(&light->data.pointLight.color, s, result);
+	if (s > 0) {
+		v3_scale(I, s, result);
+		result->array[0] *= K->array[0];
+		result->array[1] *= K->array[1];
+		result->array[2] *= K->array[2];
+	}
+	else {
+		result->array[0] = 0;
+		result->array[1] = 0;
+		result->array[2] = 0;
+	}
+}
+
+void calculate_specular(V3 *V, V3 *R, V3 *K, V3* I, V3* N, V3* L, V3* result) {
+	double s1, s2;
+	v3_dot(V, R, &s1);
+	v3_dot(N, L, &s2);
+	if (s1 > 0 && s2 > 0){
+		s1 = pow(s1, 4);
+		v3_scale(I, s1, result);
+		result->array[0] *= K->array[0];
+		result->array[1] *= K->array[1];
+		result->array[2] *= K->array[2];
+	}
 	else {
 		result->array[0] = 0;
 		result->array[1] = 0;
@@ -241,12 +309,6 @@ void copy_color(RGBAColor* srcColor, RGBAColor* dstColor) {
 	dstColor->data.G = srcColor->data.G;
 	dstColor->data.B = srcColor->data.B;
 	dstColor->data.A = srcColor->data.A;
-}
-
-double intersect_point_light(PointLight *pointLightRef, V3 *rayOriginRef) {
-	double t;
-	v3_distance(&pointLightRef->position, rayOriginRef, &t);
-	return t;
 }
 
 double intersect_sphere(Sphere *sphereRef, V3 *rayOriginRef, V3 *rayDirectionRef) {

@@ -119,11 +119,11 @@ int shade(RGBAColor* colorRef, RGBApixel *pixel);
 int shoot(V3 *rayOriginRef, V3 *rayDirectionRef, Scene *sceneRef, RGBAColor *foundColor);
 double intersect_sphere(Sphere *sphereRef, V3 *rayOriginRef, V3 *rayDirectionRef);
 double intersect_plane(Plane *planeRef, V3 *rayOriginRef, V3 *rayDirectionRef);
-double intersect_point_light(PointLight *pointLightRef, V3 *rayOriginRef);
 double clamp(double a);
 void calculate_frad(Light *light, double distance, double *result);
-void calculate_fang(double *result);
-void calculate_diffuse(V3 *N, V3 *L, Light* light, V3* result);
+void calculate_fang(Light *light, V3 *V0, double *result);
+void calculate_diffuse(V3 *N, V3 *L, V3 *K, V3* I, V3* result);
 void set_color(RGBAColor* color, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void calculate_specular(V3 *V, V3 *R, V3 *K, V3* I, V3* N, V3* L, V3* result);
 
 #endif //CS430_PROJECT_2_BASIC_RAYCASTER_RAYTRACER_H
