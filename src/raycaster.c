@@ -177,35 +177,47 @@ int shoot(V3 *rayOriginRef, V3 *rayDirectionRef, Scene *sceneRef, RGBAColor *fou
 			// Primitive specular color
 			V3 KS;
 
+			// Calculate L
 			v3_subtract(&sceneRef->lights[i]->data.pointLight.position, &newRayOrigin, &L);
 			v3_normalize(&L, &L);
 
+			// Calculate R
+			v3_reflect(&L, &N, &R);
+
+			// Calculate V
 			v3_copy(rayDirectionRef, &V);
 			v3_normalize(&V, &V);
 
 			switch(primitiveHitRef->type) {
 				case PLANE_T:
+					// Calculate N
 					v3_copy(&primitiveHitRef->data.plane.normal, &N);
+					// Calculate KD
 					v3_copy(&primitiveHitRef->data.plane.diffuseColor, &KD);
+					// Calculate KS
 					v3_copy(&primitiveHitRef->data.plane.specularColor, &KS);
 					break;
 
 				case SPHERE_T:
+					// Calculate N
 					v3_subtract(&newRayOrigin, &primitiveHitRef->data.sphere.position, &N);
 					v3_normalize(&N, &N);
 
+					// Calculate KD
 					v3_copy(&primitiveHitRef->data.sphere.diffuseColor, &KD);
+					// Calculate KS
 					v3_copy(&primitiveHitRef->data.sphere.specularColor, &KS);
 					break;
 			}
 
-			v3_reflect(&L, &N, &R);
 			V3 lightContribution = {0, 0, 0};
 			V3 diffuse;
 			V3 specular;
 			double frad;
 			double fang;
+			// Get diffuse color contribution
 			calculate_diffuse(&N, &L, &KD, &I, &diffuse);
+			// Get specular color contribution
 			calculate_specular(&V, &R, &KS, &I, &N, &L, &specular);
 			calculate_frad(lightRef, light_distance, &frad);
 			calculate_fang(lightRef, &newRayDirection, &fang);
