@@ -226,6 +226,11 @@ int shoot(V3 *rayOriginRef, V3 *rayDirectionRef, Scene *sceneRef, RGBAColor *fou
 	return 0;
 }
 
+/**
+ * Clamp a value between 0 and 1
+ * @param a
+ * @return
+ */
 double clamp(double a) {
 	if (a < 0)
 		return 0;
@@ -234,12 +239,24 @@ double clamp(double a) {
 	return a;
 }
 
+/**
+ * Calculate the radial attenuation
+ * @param light - The light to calculate for
+ * @param distance - The distance from the light
+ * @param result - The resulting frad calculation
+ */
 void calculate_frad(Light *light, double distance, double *result) {
 	*result = 1/(light->data.pointLight.radialA2*pow(distance, 2) +
 			  light->data.pointLight.radialA1*distance +
 			  light->data.pointLight.radialA0);
 }
 
+/**
+ * Calculate the angular attenuation
+ * @param light - The light to calculate for
+ * @param V0 - The vector between the light and the object
+ * @param result - The resulting fang calculation
+ */
 void calculate_fang(Light *light, V3 *V0, double *result) {
 	if (light->type != SPOTLIGHT_T) {
 		*result = 1;
@@ -263,6 +280,14 @@ void calculate_fang(Light *light, V3 *V0, double *result) {
 	}
 }
 
+/**
+ * Calculate the diffuse color contribution
+ * @param N - The normal of the primitive hit
+ * @param L - The vector between the light and the object
+ * @param K - The diffuse color of the object
+ * @param I - The light's color
+ * @param result - The resulting light diffuse contribution
+ */
 void calculate_diffuse(V3 *N, V3 *L, V3 *K, V3* I, V3* result) {
 	double s;
 	v3_dot(N, L, &s);
@@ -279,6 +304,16 @@ void calculate_diffuse(V3 *N, V3 *L, V3 *K, V3* I, V3* result) {
 	}
 }
 
+/**
+ * Calculate the specular-color contribution
+ * @param V - The view direction vector
+ * @param R - The reflection vector
+ * @param K - The specular color of the object
+ * @param I - The light's color
+ * @param N - The normal of the primitive hit
+ * @param L - The vector between the light and the object
+ * @param result - The resulting light specular contriubtion
+ */
 void calculate_specular(V3 *V, V3 *R, V3 *K, V3* I, V3* N, V3* L, V3* result) {
 	double s1, s2;
 	v3_dot(V, R, &s1);
@@ -297,20 +332,27 @@ void calculate_specular(V3 *V, V3 *R, V3 *K, V3* I, V3* N, V3* L, V3* result) {
 	}
 }
 
+/**
+ * Sets a RGBAColor to the specific value
+ * @param color - The color to set
+ * @param r - The red channel
+ * @param g - The green channel
+ * @param b - The blue channel
+ * @param a - The alpha channel
+ */
 void set_color(RGBAColor* color, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 	color->data.R = r;
 	color->data.G = g;
 	color->data.B = b;
 	color->data.A = a;
 }
-
-void copy_color(RGBAColor* srcColor, RGBAColor* dstColor) {
-	dstColor->data.R = srcColor->data.R;
-	dstColor->data.G = srcColor->data.G;
-	dstColor->data.B = srcColor->data.B;
-	dstColor->data.A = srcColor->data.A;
-}
-
+/**
+ * Sphere intersection test
+ * @param sphereRef - The sphere to check
+ * @param rayOriginRef - The ray origin
+ * @param rayDirectionRef - The ray direction
+ * @return The hit distance between the rayOrigin and the sphere along the rayDirection, if positive. Otherwise INFINITY.
+ */
 double intersect_sphere(Sphere *sphereRef, V3 *rayOriginRef, V3 *rayDirectionRef) {
 	double B = 2 * (rayDirectionRef->data.X * (rayOriginRef->data.X - sphereRef->position.data.X) + rayDirectionRef->data.Y*(rayOriginRef->data.Y - sphereRef->position.data.Y) + rayDirectionRef->data.Z*(rayOriginRef->data.Z - sphereRef->position.data.Z));
 	double C = pow(rayOriginRef->data.X - sphereRef->position.data.X, 2) + pow(rayOriginRef->data.Y - sphereRef->position.data.Y, 2) + pow(rayOriginRef->data.Z - sphereRef->position.data.Z, 2) - pow(sphereRef->radius, 2);
@@ -333,6 +375,13 @@ double intersect_sphere(Sphere *sphereRef, V3 *rayOriginRef, V3 *rayDirectionRef
 	return INFINITY;
 }
 
+/**
+ *
+ * @param planeRef - The plane to check
+ * @param rayOriginRef - The ray origin
+ * @param rayDirectionRef  - The ray direction
+ * @return The hit distance between the rayOrigin and the plane along the rayDirection, if positive. Otherwise INFINITY.
+ */
 double intersect_plane(Plane *planeRef, V3 *rayOriginRef, V3 *rayDirectionRef) {
 	double Vd;
 	double V0;
