@@ -135,6 +135,18 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 					return 1;
 				}
 
+				// Check colors
+				for (int j = 0; j < 3; j++) {
+					if (sceneRef->primitives[primitivesLength]->data.sphere.diffuseColor.array[j] < 0) {
+						fprintf(stderr, "Error: Color cannot be negative\n");
+						return 1;
+					}
+					if (sceneRef->primitives[primitivesLength]->data.sphere.diffuseColor.array[j] > 1) {
+						fprintf(stderr, "Error: Primitive colors cannot be greater than 1.0\n");
+						return 1;
+					}
+				}
+
 				// Read the specular color
 				if (JSONObject_get_value("specular_color", JSONObjectTempRef, &JSONValueTempRef) != 0) {
 					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
@@ -147,6 +159,18 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 
 				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.sphere.specularColor) != 0) {
 					return 1;
+				}
+
+				// Check colors
+				for (int j = 0; j < 3; j++) {
+					if (sceneRef->primitives[primitivesLength]->data.sphere.specularColor.array[j] < 0) {
+						fprintf(stderr, "Error: Color cannot be negative\n");
+						return 1;
+					}
+					if (sceneRef->primitives[primitivesLength]->data.sphere.specularColor.array[j] > 1) {
+						fprintf(stderr, "Error: Primitive colors cannot be greater than 1.0\n");
+						return 1;
+					}
 				}
 
 				// Read the position
@@ -199,6 +223,18 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 					return 1;
 				}
 
+				// Check colors
+				for (int j = 0; j < 3; j++) {
+					if (sceneRef->primitives[primitivesLength]->data.plane.diffuseColor.array[j] < 0) {
+						fprintf(stderr, "Error: Color cannot be negative\n");
+						return 1;
+					}
+					if (sceneRef->primitives[primitivesLength]->data.plane.diffuseColor.array[j] > 1) {
+						fprintf(stderr, "Error: Primitive colors cannot be greater than 1.0\n");
+						return 1;
+					}
+				}
+
 				// Read the specular color
 				if (JSONObject_get_value("specular_color", JSONObjectTempRef, &JSONValueTempRef) != 0) {
 					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
@@ -211,6 +247,18 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 
 				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.plane.specularColor) != 0) {
 					return 1;
+				}
+
+				// Check colors
+				for (int j = 0; j < 3; j++) {
+					if (sceneRef->primitives[primitivesLength]->data.plane.specularColor.array[j] < 0) {
+						fprintf(stderr, "Error: Color cannot be negative\n");
+						return 1;
+					}
+					if (sceneRef->primitives[primitivesLength]->data.plane.specularColor.array[j] > 1) {
+						fprintf(stderr, "Error: Primitive colors cannot be greater than 1.0\n");
+						return 1;
+					}
 				}
 
 				// Read the position
@@ -260,6 +308,14 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 
 				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->lights[lightsLength]->data.pointLight.color) != 0) {
 					return 1;
+				}
+
+				// Check colors
+				for (int j = 0; j < 3; j++) {
+					if (sceneRef->lights[lightsLength]->data.pointLight.color.array[j] < 0) {
+						fprintf(stderr, "Error: Color cannot be negative\n");
+						return 1;
+					}
 				}
 
 				// Read the position
@@ -336,6 +392,9 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 					if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->lights[lightsLength]->data.spotLight.direction) != 0) {
 						return 1;
 					}
+
+					// Normalize the direction
+					v3_normalize(&sceneRef->lights[lightsLength]->data.spotLight.direction, &sceneRef->lights[lightsLength]->data.spotLight.direction);
 				}
 
 				lightsLength++;
