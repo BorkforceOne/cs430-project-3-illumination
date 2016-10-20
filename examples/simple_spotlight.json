@@ -1,14 +1,14 @@
 [
   {
     "type": "plane",
-    "diffuse_color": [0.1, 1.0, 0.1],
+    "diffuse_color": [0.5, 0.5, 0.5],
     "specular_color": [1.0, 1.0, 1.0],
     "position": [0, -1, 0],
     "normal": [0, 1, 0]
   },
   {
     "type": "sphere",
-    "diffuse_color": [0.1, 0.7, 0.1],
+    "diffuse_color": [0.5, 0.5, 0.5],
     "specular_color": [1.0, 1.0, 1.0],
     "position": [0, 0, 10],
     "radius": 1
@@ -20,12 +20,24 @@
   },
   {
     "type": "light",
-    "color": [120.0, 120.0, 120.0],
+    "color": [120.0, 120.0, 60.0],
     "position": [10, 0, 10],
     "radial-a2": 1,
     "radial-a1": 1,
     "radial-a0": 1,
-    "angular-a0": 100,
+    "angular-a0": 10,
+    "theta": 22.5,
     "direction": [-1, 0, 0]
+  },
+  {
+    "type": "light",
+    "color": [60.0, 120.0, 120.0],
+    "position": [-10, 0, 10],
+    "radial-a2": 1,
+    "radial-a1": 1,
+    "radial-a0": 1,
+    "angular-a0": 10,
+    "theta": 22.5,
+    "direction": [1, 0, 0]
   }
 ]
