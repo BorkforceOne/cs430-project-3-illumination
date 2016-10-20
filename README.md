@@ -5,8 +5,8 @@ This project implements a simple raycasting algorithm with lights (point lights,
 ### Building
 
 ```sh
-$ git clone https://github.com/bjg96/cs430-project-2-basic-raycaster.git
-$ cd cs430-project-2-basic-raycaster
+$ git clone https://github.com/bjg96/cs430-project-3-illumination.git
+$ cd cs430-project-3-illumination
 $ make
 ```
 
