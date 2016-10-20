@@ -258,6 +258,11 @@ double clamp(double a) {
  * @param result - The resulting frad calculation
  */
 void calculate_frad(Light *light, double distance, double *result) {
+	if (distance == INFINITY) {
+		*result = 1;
+		return;
+	}
+
 	*result = 1/(light->data.pointLight.radialA2*pow(distance, 2) +
 			  light->data.pointLight.radialA1*distance +
 			  light->data.pointLight.radialA0);
@@ -274,19 +279,15 @@ void calculate_fang(Light *light, V3 *V0, double *result) {
 		*result = 1;
 		return;
 	}
-	V3 VLight, VDirection;
-	v3_copy(V0, &VLight);
-
-	VLight.array[0] *= -1;
-	VLight.array[1] *= -1;
-	VLight.array[2] *= -1;
-
-	v3_normalize(&light->data.spotLight.direction, &VDirection);
+	V3 VLight;
+    v3_scale(V0, -1, &VLight);
 
 	double s;
-	v3_dot(&VDirection, &VLight, &s);
-	if (acos(s) > M_PI/16)
-		*result = 0;
+	v3_dot(&light->data.spotLight.direction, &VLight, &s);
+
+    if (s < cos(light->data.spotLight.theta)) {
+        *result = 0;
+    }
 	else {
 		*result = pow(s, light->data.spotLight.angularA0);
 	}
@@ -331,7 +332,7 @@ void calculate_specular(V3 *V, V3 *R, V3 *K, V3* I, V3* N, V3* L, V3* result) {
 	v3_dot(V, R, &s1);
 	v3_dot(N, L, &s2);
 	if (s1 > 0 && s2 > 0){
-		s1 = pow(s1, 4);
+		s1 = pow(s1, 20);
 		v3_scale(I, s1, result);
 		result->array[0] *= K->array[0];
 		result->array[1] *= K->array[1];
