@@ -86,6 +86,7 @@ typedef struct SpotLight {
 	float radialA1;
 	float radialA0;
 	float angularA0;
+	float theta;
 	V3 direction;
 } SpotLight;
 

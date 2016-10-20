@@ -275,7 +275,7 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 					return 1;
 				}
 
-				// Read the position
+				// Read the normal
 				if (JSONObject_get_value("normal", JSONObjectTempRef, &JSONValueTempRef) != 0) {
 					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 					return 1;
@@ -288,6 +288,9 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 				if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->primitives[primitivesLength]->data.plane.normal) != 0) {
 					return 1;
 				}
+
+				// Normalize the direction
+				v3_normalize(&sceneRef->primitives[primitivesLength]->data.plane.normal, &sceneRef->primitives[primitivesLength]->data.plane.normal);
 
 				primitivesLength++;
 			}
@@ -333,68 +336,106 @@ int create_scene_from_JSON(JSONValue *JSONValueSceneRef, Scene* sceneRef) {
 				}
 
 				// Read the radialA2
-				if (JSONObject_get_value("radial-a2", JSONObjectTempRef, &JSONValueTempRef) != 0) {
-					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
-					return 1;
-				}
-				if (JSONValueTempRef->type != NUMBER_T) {
-					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
-					return 1;
-				}
-
-				sceneRef->lights[lightsLength]->data.pointLight.radialA2 = JSONValueTempRef->data.dataNumber;
-
-				// Read the radialA1
-				if (JSONObject_get_value("radial-a1", JSONObjectTempRef, &JSONValueTempRef) != 0) {
-					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
-					return 1;
-				}
-				if (JSONValueTempRef->type != NUMBER_T) {
-					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
-					return 1;
-				}
-
-				sceneRef->lights[lightsLength]->data.pointLight.radialA1 = JSONValueTempRef->data.dataNumber;
-
-				// Read the radialA0
-				if (JSONObject_get_value("radial-a0", JSONObjectTempRef, &JSONValueTempRef) != 0) {
-					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
-					return 1;
-				}
-				if (JSONValueTempRef->type != NUMBER_T) {
-					fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
-					return 1;
-				}
-
-				sceneRef->lights[lightsLength]->data.pointLight.radialA0 = JSONValueTempRef->data.dataNumber;
-
-				// Read the angularA0 if it exists
-				if (JSONObject_get_value("angular-a0", JSONObjectTempRef, &JSONValueTempRef) == 0) {
-					sceneRef->lights[lightsLength]->type = SPOTLIGHT_T;
-
+				if (JSONObject_get_value("radial-a2", JSONObjectTempRef, &JSONValueTempRef) == 0) {
 					if (JSONValueTempRef->type != NUMBER_T) {
 						fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 						return 1;
 					}
 
-					sceneRef->lights[lightsLength]->data.spotLight.angularA0 = JSONValueTempRef->data.dataNumber;
+					sceneRef->lights[lightsLength]->data.pointLight.radialA2 = JSONValueTempRef->data.dataNumber;
+				}
+				else {
+					sceneRef->lights[lightsLength]->data.pointLight.radialA2 = 1;
+				}
 
-					// Read the direction
-					if (JSONObject_get_value("direction", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+				// Read the radialA1
+				if (JSONObject_get_value("radial-a1", JSONObjectTempRef, &JSONValueTempRef) == 0) {
+					if (JSONValueTempRef->type != NUMBER_T) {
 						fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 						return 1;
 					}
-					if (JSONValueTempRef->type != ARRAY_T) {
+
+					sceneRef->lights[lightsLength]->data.pointLight.radialA1 = JSONValueTempRef->data.dataNumber;
+				}
+				else {
+					sceneRef->lights[lightsLength]->data.pointLight.radialA1 = 0;
+				}
+
+				// Read the radialA0
+				if (JSONObject_get_value("radial-a0", JSONObjectTempRef, &JSONValueTempRef) == 0) {
+					if (JSONValueTempRef->type != NUMBER_T) {
 						fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 						return 1;
 					}
 
-					if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->lights[lightsLength]->data.spotLight.direction) != 0) {
+					sceneRef->lights[lightsLength]->data.pointLight.radialA0 = JSONValueTempRef->data.dataNumber;
+				}
+				else {
+					sceneRef->lights[lightsLength]->data.pointLight.radialA0 = 0;
+				}
+
+				// Ensure that A0, A1, and A2 are not all 0
+				if (sceneRef->lights[lightsLength]->data.pointLight.radialA0 == 0 &&
+						sceneRef->lights[lightsLength]->data.pointLight.radialA1 == 0 &&
+						sceneRef->lights[lightsLength]->data.pointLight.radialA2 == 0) {
+					fprintf(stderr, "Error: Input scene light constants must have one constant not equal to 0\n");
+					return 1;
+				}
+
+				if (sceneRef->lights[lightsLength]->data.pointLight.radialA0 < 0 ||
+					sceneRef->lights[lightsLength]->data.pointLight.radialA1 < 0 ||
+					sceneRef->lights[lightsLength]->data.pointLight.radialA2 < 0) {
+					fprintf(stderr, "Error: Input scene light constants must not be negative\n");
+					return 1;
+				}
+
+				// Read the angularA0 if it exists
+				if (JSONObject_get_value("theta", JSONObjectTempRef, &JSONValueTempRef) == 0) {
+					if (JSONValueTempRef->type != NUMBER_T) {
+						fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
 						return 1;
 					}
 
-					// Normalize the direction
-					v3_normalize(&sceneRef->lights[lightsLength]->data.spotLight.direction, &sceneRef->lights[lightsLength]->data.spotLight.direction);
+					if (JSONValueTempRef->data.dataNumber != 0) {
+						sceneRef->lights[lightsLength]->type = SPOTLIGHT_T;
+
+						// Translate Theta into radians
+						sceneRef->lights[lightsLength]->data.spotLight.theta = (float) (JSONValueTempRef->data.dataNumber * (M_PI/180));
+
+
+						if (JSONObject_get_value("angular-a0", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+							fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+							return 1;
+						}
+						if (JSONValueTempRef->type != NUMBER_T) {
+							fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+							return 1;
+						}
+
+						sceneRef->lights[lightsLength]->data.spotLight.angularA0 = JSONValueTempRef->data.dataNumber;
+
+						if (sceneRef->lights[lightsLength]->data.spotLight.angularA0 < 0) {
+							fprintf(stderr, "Error: Input scene light constants must not be negative\n");
+							return 1;
+						}
+
+						// Read the direction
+						if (JSONObject_get_value("direction", JSONObjectTempRef, &JSONValueTempRef) != 0) {
+							fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+							return 1;
+						}
+						if (JSONValueTempRef->type != ARRAY_T) {
+							fprintf(stderr, "Error: Input scene JSON file contains invalid entries\n");
+							return 1;
+						}
+
+						if (JSONArray_to_V3(JSONValueTempRef->data.dataArray, &sceneRef->lights[lightsLength]->data.spotLight.direction) != 0) {
+							return 1;
+						}
+
+						// Normalize the direction
+						v3_normalize(&sceneRef->lights[lightsLength]->data.spotLight.direction, &sceneRef->lights[lightsLength]->data.spotLight.direction);
+					}
 				}
 
 				lightsLength++;
