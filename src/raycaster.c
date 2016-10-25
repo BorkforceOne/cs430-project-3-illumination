@@ -29,8 +29,8 @@ int raycast(Scene *sceneRef, Image* imageRef, int imageWidth, int imageHeight) {
 	V3 viewPlanePos = {0, 0, 1};
     V3 cameraPos = {0, 0, 0};
 
-	double pixelHeight = cameraHeight/imageWidth;
-	double pixelWidth = cameraWidth/imageHeight;
+	double pixelHeight = cameraHeight/imageHeight;
+	double pixelWidth = cameraWidth/imageWidth;
 
 	V3 rayDirection = {0, 0, 0}; // The direction of our ray
     V3 point = {0, 0, 0}; // The point on the viewPlane that we intersect
@@ -38,13 +38,13 @@ int raycast(Scene *sceneRef, Image* imageRef, int imageWidth, int imageHeight) {
 	RGBAColor colorFound;
 
     point.data.Z = viewPlanePos.data.Z;
-	for (int i=0; i<imageWidth; i++) {
-        point.data.Y = -(viewPlanePos.data.Y - cameraHeight/2.0 + pixelHeight * (i + 0.5));
-		for (int j=0; j<imageHeight; j++) {
-            point.data.X = viewPlanePos.data.X - cameraWidth/2.0 + pixelWidth * (j + 0.5);
+	for (int y=0; y<imageHeight; y++) {
+        point.data.Y = -(viewPlanePos.data.Y - cameraHeight/2.0 + pixelHeight * (y + 0.5));
+		for (int x=0; x<imageWidth; x++) {
+            point.data.X = viewPlanePos.data.X - cameraWidth/2.0 + pixelWidth * (x + 0.5);
 			v3_normalize(&point, &rayDirection); // normalization, find the ray direction
 			shoot(&cameraPos, &rayDirection, sceneRef, &colorFound);
-			shade(&colorFound, &imageRef->pixmapRef[i*imageHeight + j]);
+			shade(&colorFound, &imageRef->pixmapRef[y*imageWidth + x]);
 		}
 	}
 
